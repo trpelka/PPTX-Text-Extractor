@@ -1,0 +1,65 @@
+# Install the PowerPoint parser
+!pip -q install python-pptx
+
+from google.colab import files
+from pptx import Presentation
+import os
+
+# 1. Upload your PPTX
+print("Upload your PowerPoint (.pptx) file:")
+uploaded = files.upload()
+
+pptx_file = next(
+    (name for name in uploaded if name.lower().endswith((".pptx", ".ppt"))),
+    None
+)
+
+if not pptx_file:
+    raise ValueError("No .pptx file was uploaded.")
+
+print(f"Processing: {pptx_file}")
+
+# 2. Open the presentation
+prs = Presentation(pptx_file)
+
+# 3. Extract text
+output_file = os.path.splitext(pptx_file)[0] + "_ALL_TEXT.txt"
+
+with open(output_file, "w", encoding="utf-8") as f:
+
+    for slide_num, slide in enumerate(prs.slides, start=1):
+        f.write(f"\n{'='*60}\n")
+        f.write(f"SLIDE {slide_num}\n")
+        f.write(f"{'='*60}\n\n")
+
+        for shape in slide.shapes:
+
+            # Normal text boxes / placeholders / shapes
+            if hasattr(shape, "text") and shape.text.strip():
+                f.write(shape.text.strip())
+                f.write("\n\n")
+
+            # Tables
+            if shape.has_table:
+                for row in shape.table.rows:
+                    cells = [
+                        cell.text.strip().replace("\n", " ")
+                        for cell in row.cells
+                    ]
+                    f.write(" | ".join(cells))
+                    f.write("\n")
+                f.write("\n")
+
+# 4. Count words
+with open(output_file, "r", encoding="utf-8") as f:
+    text = f.read()
+
+word_count = len(text.split())
+
+print(f"\nDone!")
+print(f"Slides: {len(prs.slides)}")
+print(f"Words extracted: {word_count:,}")
+print(f"Output: {output_file}")
+
+# 5. Download the text file
+files.download(output_file)
